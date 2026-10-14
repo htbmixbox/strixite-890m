@@ -2,7 +2,7 @@
 
 strixite itself is under the AGPL-3.0 (`/opt/strixite/LICENSE`); its own third-party code is listed in
 `/opt/strixite/THIRD_PARTY.md`. The image also carries runtime libraries from AMD's ROCm, built by TheRock
-(`therock-dist-linux-gfx1151`, the version in the image's labels), in `/opt/strixite/lib`. Each keeps its own
+(`therock-dist-linux-gfx1150`, the version in the image's labels), in `/opt/strixite/lib`. Each keeps its own
 license; the texts are in `/opt/strixite/licenses/`.
 
 | library in /opt/strixite/lib | project | license text in /opt/strixite/licenses/ |

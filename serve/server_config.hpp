@@ -77,13 +77,13 @@ private:
     bool help_ = false;
 };
 
-// The served n-gram row cache (8 M rows, ~3 GiB; deploy/strix-server.conf has the reason) - the server's default. The
-// library's own default (NgramTableRows::kDefaultCacheRows, 2^18) stays for tools and benches.
-constexpr int64_t kServedNgramCacheRows = 8388608;
+// For the 96 GB 890M build, leave memory for the model and the OS. The upstream Strix Halo
+// service config still selects 8M rows explicitly. The library's default is also 2^18.
+constexpr int64_t kServedNgramCacheRows = 262144;
 
 // strix_server's option table. models_dir: $STRIX_MODELS_DIR (else ~/models/strix-infer), under which the default
-// paths live. Every default is the served value (the defaults are what a dedicated headless Strix Halo serving a
-// coding agent uses), and deploy/strix-server.conf lists the same values.
+// paths live. Built-in defaults match deploy/890m-96gb.conf; the original Halo-specific values remain in
+// deploy/strix-server.conf. A --config file or flags can override either profile.
 std::vector<ConfigOption> strix_server_options(const std::string &models_dir);
 
 }  // namespace strix

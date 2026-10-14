@@ -7,12 +7,41 @@
   },
   "configurePresets": [
     {
+      "name": "890m",
+      "displayName": "Radeon 890M (gfx1150), 96 GB unified memory",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/890m",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "STRIX_GPU_ARCH": "gfx1150"
+      }
+    },
+    {
+      "name": "890m-debug",
+      "displayName": "Radeon 890M (gfx1150), RelWithDebInfo",
+      "inherits": "890m",
+      "binaryDir": "${sourceDir}/build/890m-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "890m-roctx",
+      "displayName": "Radeon 890M (gfx1150), ROCTX",
+      "inherits": "890m",
+      "binaryDir": "${sourceDir}/build/890m-roctx",
+      "cacheVariables": {
+        "STRIX_ROCTX": "ON"
+      }
+    },
+    {
       "name": "strix",
       "displayName": "Strix Halo (gfx1151), Release",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/strix",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "STRIX_GPU_ARCH": "gfx1151"
       }
     },
     {
@@ -35,6 +64,18 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "890m",
+      "configurePreset": "890m"
+    },
+    {
+      "name": "890m-debug",
+      "configurePreset": "890m-debug"
+    },
+    {
+      "name": "890m-roctx",
+      "configurePreset": "890m-roctx"
+    },
     {
       "name": "strix",
       "configurePreset": "strix"

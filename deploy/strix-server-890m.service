@@ -1,0 +1,41 @@
+# strix-server as a systemd *user* unit, serving the gfx1150 build in the checkout at ~/src/strix-infer.
+# Install (the file stays versioned in the checkout):
+#   systemctl --user link ~/src/strix-infer/deploy/strix-server-890m.service
+#   systemctl --user daemon-reload
+#   systemctl --user start strix-server-890m.service     # enable it to start at boot (needs `loginctl enable-linger`)
+# Logs: journalctl --user -u strix-server-890m.service
+# Serves the gfx1150 build in the checkout: rebuild (cmake --build --preset 890m --target strix_server), then restart.
+[Unit]
+Description=strix-infer server (Qwen3.8-Flash-Next, OpenAI-compatible, :5300)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/src/strix-infer
+# Settings: deploy/890m-96gb.conf (each served value with its reason; precedence default < file < flag). Editing
+# it needs only a restart; editing this unit needs `systemctl --user daemon-reload` first.
+# The served weights stay a flag: STRIX_WEIGHTS, the shipping layout unless a drop-in overrides it (e.g.
+# strix-server-890m.service.d/weights.conf to compare layouts).
+Environment=STRIX_WEIGHTS=%h/models/strix-infer/converted/Qwen3.8-Flash-Next.U-gdn_in-g128/weights.strixw
+# STRIX_EXTRA_ARGS: temporary extra flags (e.g. "--think-nudge off"), set through a drop-in
+# (strix-server-890m.service.d/extra.conf) and removed afterwards; empty in service. Unbraced $VAR: split into words, no
+# argument at all when empty.
+Environment=STRIX_EXTRA_ARGS=
+# STRIX_LOCAL_ARGS: this machine's standing additions (e.g. "--capture-dir ..."), set by a local drop-in; empty here.
+Environment=STRIX_LOCAL_ARGS=
+# A GPU memory fault (an aperture violation) aborts the process from the HIP runtime's queue callback (exit 134, then
+# Restart= below) and by default dumps the GPU's memory into the working directory - this checkout, 156 MB for a
+# one-buffer process, far more for the server's ~66 GiB of weights plus the 890M workspace. Off.
+Environment=HSA_DISABLE_COREDUMP_ON_EXCEPTION=1
+ExecStart=%h/src/strix-infer/build/890m/strix_server --config %h/src/strix-infer/deploy/890m-96gb.conf --weights ${STRIX_WEIGHTS} $STRIX_LOCAL_ARGS $STRIX_EXTRA_ARGS
+# SIGTERM stops the HTTP server, then the prompt cache writes its RAM-only entries to disk (up to 40 s); the model's
+# ~30 s load is on start, not stop.
+TimeoutStopSec=90
+Restart=on-failure
+RestartSec=15
+# Exit 4: the startup memory check refused (low-memory = fail; the log says what to change) - restarting would load
+# the weights again only to refuse again. Exit 3 (a lost GPU context) and a crash do restart.
+RestartPreventExitStatus=4
+
+[Install]
+WantedBy=default.target

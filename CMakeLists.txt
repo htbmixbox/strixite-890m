@@ -64,10 +64,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # --- ROCm --------------------------------------------------------------------
 # No hipcc, no CMake HIP language: HIP sources are plain CXX sources compiled
 # with `-x hip --offload-arch=...`. Host-only files that call the HIP runtime
-# API only need the headers and __HIP_PLATFORM_AMD__. gfx1151 is the only
-# shipping target; gfx1100 exists only as a local dev-loop build for
-# correctness checks (xtx-dev preset).
-set(STRIX_GPU_ARCH "gfx1151" CACHE STRING "Device code target (gfx1151 ships; gfx1100 = local dev only)")
+# API only need the headers and __HIP_PLATFORM_AMD__. This fork defaults to the Radeon
+# 890M (gfx1150), while the original Strix Halo (gfx1151) preset remains available.
+# An installed ROCm toolchain MUST contain device libraries for the chosen target.
+set(STRIX_GPU_ARCH "gfx1150" CACHE STRING "HIP device ISA (gfx1150 Radeon 890M; gfx1151 Strix Halo; gfx1100 development)")
+set_property(CACHE STRIX_GPU_ARCH PROPERTY STRINGS gfx1150 gfx1151 gfx1100)
+if(NOT STRIX_GPU_ARCH MATCHES "^(gfx1150|gfx1151|gfx1100)$")
+    message(FATAL_ERROR "Unknown STRIX_GPU_ARCH=${STRIX_GPU_ARCH}; expected gfx1150, gfx1151, or gfx1100")
+endif()
+message(STATUS "HIP device ISA: ${STRIX_GPU_ARCH}")
 string(FIND "${CMAKE_CXX_COMPILER}" "${STRIX_ROCM_ROOT}/" strix_compiler_at)
 if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR NOT strix_compiler_at EQUAL 0)
     message(FATAL_ERROR "CMAKE_CXX_COMPILER must be the ROCm clang under STRIX_ROCM_ROOT=${STRIX_ROCM_ROOT} "
@@ -229,6 +234,8 @@ target_link_libraries(check_stream_calls PRIVATE strix_serve)
 
 add_executable(strix_server tools/strix_server.cpp)
 target_link_libraries(strix_server PRIVATE strix_serve_model)
+# A runtime guard catches an inadvertently selected non-matching AMD GPU before allocating ~66 GiB.
+target_compile_definitions(strix_server PRIVATE STRIX_TARGET_GPU_ARCH="${STRIX_GPU_ARCH}")
 
 
 

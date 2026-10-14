@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <memory>
+#include <string_view>
 #include <sstream>
 
 using namespace strix;
@@ -90,6 +91,21 @@ int run(int argc, char **argv) {
         const ConfigSetting &s = settings.setting(o.name);
         slog(LogLevel::Info, "startup: config %s = %s (%s)", o.name.c_str(), s.value.c_str(), s.source.c_str());
     }
+    // Verify the chosen ROCm device *before* the enormous model allocations. An RTX 2070 may
+    // be present as a separate swap/cache device, but it cannot execute these AMD HIP kernels.
+    int device = -1;
+    STRIX_HIP_CHECK(hipGetDevice(&device), "looking up the selected Radeon GPU");
+    hipDeviceProp_t prop{};
+    STRIX_HIP_CHECK(hipGetDeviceProperties(&prop, device), "inspecting the selected Radeon GPU");
+    const std::string_view actual(prop.gcnArchName);
+    const std::string_view target(STRIX_TARGET_GPU_ARCH);
+    STRIX_CHECK(actual == target || (actual.size() > target.size() &&
+                actual.substr(0, target.size()) == target && actual[target.size()] == ':'),
+                "strix_server was compiled for ", target, " but ROCm selected GPU ", device,
+                " ('", prop.name, "', architecture ", actual,
+                "). Choose the Radeon 890M with ROCR_VISIBLE_DEVICES/HIP_VISIBLE_DEVICES or rebuild for this GPU.");
+    slog(LogLevel::Info, "startup: Radeon device %d: %s (%s), %d HIP compute units reported",
+         device, prop.name, prop.gcnArchName, prop.multiProcessorCount);
     const std::string weights = settings.text("weights"), ngram = settings.text("ngram");
     const std::string tokenizer = settings.text("tokenizer"), gen_config = settings.text("generation-config");
     ServerConfig cfg;
@@ -143,7 +159,8 @@ int run(int argc, char **argv) {
     }
     Qwen4ExpBackend backend(model, capacity, chunk, use_mtp, mtp_vocab);
     {
-        // Where the GPU memory went (all of it is system RAM here - the prompt cache's RAM tier gets what's left).
+        // On gfx1150, HIP device/GTT allocations consume unified physical RAM; a separate NVIDIA VRAM
+        // swap/cache cannot be counted as additional AMD HIP device memory.
         const auto tally = GpuMemoryTally::snapshot();
         int64_t total = 0;
         for (const auto &c : tally) total += c.second;

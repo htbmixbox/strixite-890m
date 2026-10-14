@@ -1,3 +1,5 @@
+> **Note:** This is the *original* upstream `gfx1151`/128 GB container guide and refers to its published image. For the `gfx1150`/96 GB fork, see [the 890M build guide](890m-96gb.md) and build locally with `deploy/container/build-image.sh`; do not use the original `gfx1151` image.
+
 # Run strixite in a container
 
 The container image has the server and its tools already built, with the ROCm runtime they need inside. You don't
